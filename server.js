@@ -12,7 +12,9 @@ server.get('/api/users', (req, res) => {
   if (usersArray.length != 0) {
     res.json(usersArray);
   } else {
-    res.status(404).json({ message: 'No users in database' });
+    res
+      .status(500)
+      .json({ message: 'The users information could not be retrieved.' });
   }
 });
 
@@ -21,20 +23,31 @@ server.get('/api/users/:id', (req, res) => {
   const id = req.params.id;
   const userExist = checkIfUserExist(id);
   if (userExist) {
-    return res.json(userExist);
+    return res.json(userExist.user);
+  } else {
+    res
+      .status(404)
+      .json({ message: 'The user with the specified ID does not exist.' });
   }
-  res.status(404).json({ message: `User with id ${id} does not exist` });
 });
 
 //Crerate new user
 server.post('/api/users', (req, res) => {
   const user = req.body;
-
   if (user.id && user.name && user.bio) {
-    usersArray.push(user);
-    res.json({ message: 'User created succefully' });
+    //Check if the id already exist
+    if (checkIfUserExist(user.id)) {
+      res.status(500).json({
+        message: 'There was an error while saving the user to the database',
+      });
+    } else {
+      usersArray.push(user);
+      res.status(201).json(user);
+    }
   } else {
-    res.status(404).json({ message: 'User missing required info, try again.' });
+    res
+      .status(400)
+      .json({ message: 'Please provide name and bio for the user.' });
   }
 });
 
@@ -42,30 +55,51 @@ server.post('/api/users', (req, res) => {
 server.delete('/api/users/:id', (req, res) => {
   const id = req.params.id;
   const userExist = checkIfUserExist(id);
-  console.log(`Step 2: ${userExist}`);
-
   //Check if user exist
   if (userExist) {
-    const index = usersArray.indexOf(userExist); //Get index
-    usersArray.splice(index, 1); //Delete from array
+    usersArray.splice(userExist.index, 1); //Delete from array
 
-    res.json({ message: `User with id ${id} has been deleted.` });
+    res.json({
+      message: `User with id ${userExist.user.id} has been deleted.`,
+    });
   } else {
     //If does not exist show error
     res.status(404).json({
-      message: `User with id ${id} does not exist: ${userExist}`,
+      message: 'The user with the specified ID does not exist.',
     });
   }
 });
 
+//Update current user data
+server.put('/api/users/:id', (req, res) => {
+  const id = req.params.id;
+  const data = req.body;
+  const userExist = checkIfUserExist(id);
+  if (userExist) {
+    if (data.id && data.name && data.bio) {
+      const updatedData = (usersArray[userExist.index] = data);
+      res.status(200).json(updatedData);
+    } else {
+      res
+        .status(400)
+        .json({ errorMessage: 'Please provide name and bio for the user.' });
+    }
+  } else {
+    res
+      .status(404)
+      .json({ message: 'The user with the specified ID does not exist.' });
+  }
+});
+
+//Temp DataBase
 const usersArray = [];
 
 //Helper method to find users
 const checkIfUserExist = (id) => {
   let foundUser = null;
-  usersArray.forEach((user) => {
+  usersArray.forEach((user, index) => {
     if (user['id'] == id) {
-      foundUser = user;
+      foundUser = { user: user, index: index };
     }
   });
   return foundUser;

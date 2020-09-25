@@ -18,6 +18,13 @@ server.get('/api/users', (req, res) => {
   }
 });
 
+//use query
+server.get('/api/users/test', (req, res) => {
+  const query = req.query;
+  console.log(`Query: ${query}`);
+  res.json({ message: `Query: ${query.sortby}` });
+});
+
 //Return specific user
 server.get('/api/users/:id', (req, res) => {
   const id = req.params.id;
@@ -34,7 +41,8 @@ server.get('/api/users/:id', (req, res) => {
 //Crerate new user
 server.post('/api/users', (req, res) => {
   const user = req.body;
-  if (user.id && user.name && user.bio) {
+  user.id = nextID++; //Add an id to each user
+  if (user.name && user.bio) {
     //Check if the id already exist
     if (checkIfUserExist(user.id)) {
       res.status(500).json({
@@ -76,9 +84,10 @@ server.put('/api/users/:id', (req, res) => {
   const data = req.body;
   const userExist = checkIfUserExist(id);
   if (userExist) {
-    if (data.id && data.name && data.bio) {
-      const updatedData = (usersArray[userExist.index] = data);
-      res.status(200).json(updatedData);
+    if (data.name && data.bio) {
+      usersArray[userExist.index].name = data.name;
+      usersArray[userExist.index].bio = data.bio;
+      res.status(200).json(userExist.user);
     } else {
       res
         .status(400)
@@ -92,6 +101,7 @@ server.put('/api/users/:id', (req, res) => {
 });
 
 //Temp DataBase
+let nextID = 1;
 const usersArray = [];
 
 //Helper method to find users
